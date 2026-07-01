@@ -81,11 +81,11 @@ npx skills add DeFiHackLabs/defi-incident-investigation-skill -l
 
 ## Quick Start
 
-Example: Taiko Bridge SGX Enclave Key Leak on June 2026
+Example Case: Taiko Bridge SGX Enclave Key Leak on June 2026
 
 ```text
 Hey GLM 5.2,
-Help me get a clear view of the attack on Taiko.xyz that occurred in June 2026.
+Help me get a clear view of the attack against Taiko.xyz that occurred in June 2026.
 Here are some references I just saw:
 
 - https://x.com/taikoxyz/status/2068858818352865626
@@ -108,10 +108,10 @@ Some of these references might just be security alerts; I don't care.
 I just want to get a clear picture about the attack.
 ```
 
-If the investigation process was accidentally interrupted, you can say "Resume your work" to resume uncompleted task.
+If the investigation process was accidentally interrupted, you can say something like "Resume your work" to resume uncompleted task.
 
 ```text
-Sorry, I hit the LLM token quota limit.
+I hit the LLM token quota limit.
 Please continue from where you left off.
 ```
 
@@ -119,12 +119,12 @@ Please continue from where you left off.
   <summary>Reasoning process by hermes-agent v0.17.0 (just for reference)</summary>
   The following content is for illustrative only. The reasoning results may vary depending on changes to the LLM model or skill.
   
-  <br>
-
   See [example/reasoning_process.md](example/reasoning_process.md).
 </details>
 
 Final output: 
+
+See report: [example/20260621-Taiko.json](example/20260621-Taiko.json)
 
 ```text
 All 7 phases complete. Here's the final summary.
@@ -199,7 +199,6 @@ REPORT SUMMARY
   metadata.human_verified: false
     (set to true only after you confirm)
 
-The report is ready at /tmp/defi-incident-Taiko-20260628/report.json. Would you like to review it, or should I flip human_verified to true?
+The report is ready at /tmp/defi-incident-Taiko-20260628/report.json.
+Would you like to review it, or should I flip human_verified to true?
 ```
-
-Report: [example/20260621-Taiko.json](example/20260621-Taiko.json)
