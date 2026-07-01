@@ -83,7 +83,7 @@ npx skills add DeFiHackLabs/defi-incident-investigation-skill -l
 
 Example Case: Taiko Bridge SGX Enclave Key Leak on June 2026
 
-Feed an AI agent with security alerts or post-mortem reports, then let them cook.
+Feed an AI agent with X.com tweets, security alerts, post-mortem reports or even raw txhash, then let them cook.
 
 ```text
 Hey GLM 5.2,
