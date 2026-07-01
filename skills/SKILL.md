@@ -60,7 +60,7 @@ Before starting any phase, check if a checkpoint exists. If found and status="co
 
 **Goal:** Extract all available information from user-provided reference URLs.
 
-1. Read all provided URLs. For X/Twitter URLs, use the vxtwitter API (`https://api.vxtwitter.com/Twitter/status/<TWEET_ID>`) — it requires no auth and returns full tweet text, media URLs, threaded tweets, and quoted tweets. Use `vision_analyze` on `mediaURLs` to extract on-chain data from tweet images. For other URLs, use `browser_navigate` + `browser_console` for JavaScript-rendered pages. Extract full article content including code blocks, addresses, tx hashes.
+1. Read all provided URLs. For X/Twitter URLs, use the vxtwitter API (`https://api.vxtwitter.com/Twitter/status/<TWEET_ID>`) — it requires no auth and returns full tweet text, media URLs, threaded tweets, and quoted tweets. Use `vision_analyze` on `mediaURLs` to extract on-chain data from tweet images. For other URLs, use `browser_navigate` + `browser_console` for JavaScript-rendered pages. Extract full article content including code blocks, addresses, tx hashes. **Note:** vxtwitter truncates tweets at ~1000 chars; for long technical threads from security firms, always use `browser_navigate` + `browser_console(expression="document.body.innerText")` as a fallback to get the complete text. If a URL returns 404 (page not found), exclude it from references and continue — do not block the investigation on a single dead URL if other sources cover the same information.
 2. If anti-crawler / Cloudflare blocks access: ask the user to manually visit the page and paste content. Do not attempt to bypass.
 3. If API keys are needed (Etherscan, etc.): follow the **API Key Resolution Protocol** (see section below). Do not guess or fabricate keys.
 4. Extract entities: protocol name, blockchain(s), attacker addresses, victim contracts, tx hashes, loss figures, attack timeline, attack method.
@@ -114,7 +114,7 @@ This phase operates in optimistic-trust mode: the skill is expected to run in a 
 
 1. Read `references/onchain-verification.md` for multi-chain RPC patterns and Etherscan V2 API usage.
 2. Read `references/pitfalls/general.md` for known verification traps.
-3. **Important:** Cache all API responses to disk during Phase 1. Reuse cached data here instead of re-querying. If the API key gets rate-limited (see Pitfall #16), switch to public RPC (e.g., `https://1rpc.io/eth` for Ethereum). Add `time.sleep(1)` between RPC calls to avoid 429 (see Pitfall #19).
+3. **Important:** Cache all API responses to disk during Phase 1. Reuse cached data here instead of re-querying. If the API key gets rate-limited (see Pitfall #16), switch to public RPC (e.g., `https://1rpc.io/eth` for Ethereum). Add `time.sleep(1)` between RPC calls to avoid 429 (see Pitfall #19). If an RPC call returns `None`/`null` as the result (not `"0x"`, not an error), treat it as a transient failure and retry from a different endpoint — do NOT classify based on a `None` result (see Pitfall #20).
 4. For every `txHash` in the draft:
    - Call `eth_getTransactionByHash` (or equivalent for the chain) — verify tx exists, `from`/`to` match, `status == 0x1` (SUCCESS)
    - Call `eth_getBlockByNumber` — verify block timestamp matches `attackTime`

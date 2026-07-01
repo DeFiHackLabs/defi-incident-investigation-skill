@@ -123,3 +123,26 @@ def rpc_call(endpoint, method, params, retries=3):
 ```
 
 **Note:** `ethereum-rpc.publicnode.com` may timeout completely (not 429, but connection timeout). Have a fallback chain: `1rpc.io/eth` → `rpc.ankr.com/eth` → `eth.drpc.org`.
+
+## 20. Silent `None` Return from RPC (Not 429, Not Timeout)
+
+Public RPC endpoints (observed with `1rpc.io/eth`) can return `None` as the JSON-RPC `result` field for valid queries — specifically `eth_getCode` and `eth_getTransactionReceipt` — without raising an HTTP error or returning a 429. The call appears to succeed (HTTP 200, valid JSON), but `result` is `null`.
+
+**Scenario:** During Taiko (2026-06-21) address verification, `eth_getCode(0x7506..., "latest")` returned `None` from `1rpc.io/eth`, causing `len(None)` → `0` and a misclassification as EOA or `RPC_FAILED`. A retry from `eth.drpc.org` returned the correct `"0x"` (len=2, EOA). Similarly, `eth_getTransactionReceipt` for two of four tx hashes returned `None` from `1rpc.io/eth` on first pass but succeeded on retry from the same or a different endpoint.
+
+**Detection:** If `eth_getCode` or `eth_getTransactionReceipt` returns `None`/`null` as the result (not `"0x"`, not an error dict), treat it as a transient failure — NOT as "address is an EOA" or "tx does not exist". Retry from a different endpoint.
+
+**Fix:** Check `result is not None` before checking `len(result)`. Use multi-endpoint rotation:
+
+```python
+def rpc_call_robust(method, params):
+    endpoints = ["https://1rpc.io/eth", "https://rpc.ankr.com/eth", "https://eth.drpc.org"]
+    for ep in endpoints:
+        result, err = rpc_call_single(ep, method, params)
+        if result is not None:
+            return result
+        time.sleep(1)
+    return None  # truly failed after all endpoints
+```
+
+**Key distinction:** `"0x"` (len=2) is a valid EOA result. `None`/`null` (len=0 in Python) is a failed query. Always distinguish these two cases in classification logic.

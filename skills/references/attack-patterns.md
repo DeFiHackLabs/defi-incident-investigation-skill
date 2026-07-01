@@ -24,19 +24,26 @@ Target: upgradeable proxy contracts with Gnosis Safe multisig governance.
 Target: TEE-based bridge verifiers (e.g., Taiko SGX).
 
 **Pattern:**
-1. Key leak → enclave signing key (RSA private key) found in public GitHub repo
-2. Enclave signing → attacker signs own malicious SGX enclave with leaked key
-3. Instance registration → `registerInstance()` passes DCAP verification
-4. Forged proof → malicious SGX instance signs fake L2 block state proofs
-5. `proveBlocks()` → bridge accepts forged proofs, marks fake blocks as "proven"
-6. `processMessage()` / `retryMessage()` → vault/bridge releases L1 assets
+1. Key leak → enclave signing key (RSA-3072 private key, `enclave-key.pem`) found in public GitHub repo
+2. MrSigner derivation → attacker computes SHA-256 of little-endian RSA modulus, confirms it matches on-chain `trustedUserMrSigner`
+3. Enclave signing → attacker signs own malicious SGX enclave with leaked key
+4. Instance registration → `registerInstance()` passes DCAP verification (signature matches trusted MrSigner)
+5. Checkpoint forgery → `saveCheckpoint()` saves a fabricated source-chain block checkpoint with forged block hash and state root
+6. Forged message proof → `processMessage()` calls `proveSignalReceived()` which accepts the forged checkpoint, setting bridge messages to RETRIABLE status
+7. Asset drain → `retryMessage()` and `processMessage()` release L1 assets from Bridge/ERC20Vault with no independent re-verification
 
 **Detection signals:**
-- `registerInstance` selector `0x09c5eabe` on SgxVerifier contracts
-- `proveBlocks` selector `0x0432873c` on TaikoL1
-- `InstanceAdded` events from SgxVerifier
-- `BlockVerified` events from TaikoL1
+- `execute(bytes)` selector `0x09c5eabe` — attacker EOA calls executor contract to orchestrate the full attack in one setup tx
+- `registerInstance` selector `0xa91951a2` on SgxVerifier contracts — registers malicious SGX instances
+- `saveCheckpoint` selector `0xc9a0b8c8` on SignalService — saves forged checkpoint
+- `processMessage` selector `0x2035065e` on Bridge — sets messages to RETRIABLE
+- `proveSignalReceived` selector `0x910af6ed` on SignalService — verifies signal against forged checkpoint
+- `retryMessage` selector `0x0432873c` on Bridge — releases assets based on RETRIABLE status alone
+- `InstanceAdded` events from SgxVerifier (IDs 5, 6 in Taiko case)
+- `MessageStatusChanged` events with status=1 (RETRIABLE) from Bridge
+- `INSTANCE_VALIDITY_DELAY = 0` in SgxVerifier contract — fresh instances immediately usable
 - Verify leaked key exists: `openssl rsa -in enclave-key.pem -pubout`
+- No corresponding `MessageSent` events on the source chain (L2) for the forged bridge messages
 
 ## EIP-7702 Exploit Helper (Post-Pectra)
 
@@ -54,7 +61,7 @@ Active since Ethereum Pectra upgrade (2025-05-07). EOA temporarily inherits code
 
 **Sybil helper pattern:** EIP-7702 delegated helper may spawn >100 sub-helper contracts per tx to act as fresh `msg.sender` on vulnerable protocol's reward path.
 
-**Best RPC for EIP-7702 historical queries:** `https://1rpc.io/eth` — supports historical `eth_getCode` at arbitrary block heights. `ethereum-rpc.publicnode.com` is documented as supporting this but has been observed to timeout in practice; use as secondary fallback.
+**Best RPC for EIP-7702 historical queries:** `https://1rpc.io/eth` — supports historical `eth_getCode` at arbitrary block heights. `https://eth.drpc.org` also confirmed working for historical `eth_getCode` (Taiko 2026-06-21 investigation). `ethereum-rpc.publicnode.com` is documented as supporting this but has been observed to timeout in practice; use as secondary fallback.
 
 ## Cross-Chain Bridge Funding
 

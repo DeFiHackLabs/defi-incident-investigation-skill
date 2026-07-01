@@ -39,10 +39,10 @@ module=block&action=getblocknobytime&timestamp=1725926400&closest=before
 ### Ethereum
 | Endpoint | Notes |
 |----------|-------|
-| `https://ethereum-rpc.publicnode.com` | Best for historical `eth_getCode` + `trace_transaction` |
-| `https://eth.drpc.org` | Reliable for standard reads (403 on receipts) |
-| `https://1rpc.io/eth` | Fast, standard JSON-RPC |
-| `https://rpc.ankr.com/eth` | Good availability |
+| `https://ethereum-rpc.publicnode.com` | Best for historical `eth_getCode` + `trace_transaction` (may timeout in practice) |
+| `https://eth.drpc.org` | Reliable for standard reads; also serves `eth_getTransactionReceipt` and historical `eth_getCode` |
+| `https://1rpc.io/eth` | Fast, standard JSON-RPC; can return silent `None` (see Pitfall #20) |
+| `https://rpc.ankr.com/eth` | Good availability; intermittent `None` returns on some methods |
 
 ### BSC
 | Endpoint | Notes |
