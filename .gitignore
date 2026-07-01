@@ -1,0 +1,17 @@
+# Checkpoints and temporary investigation artifacts
+*.checkpoint.json
+
+# API response caches
+*_txlist.json
+*_tokentx.json
+*_receipt.json
+*_code.json
+*_price.json
+
+# Python cache
+__pycache__/
+*.pyc
+
+# OS files
+.DS_Store
+Thumbs.db
