@@ -1,6 +1,6 @@
 ---
 name: defi-incident-investigation
-description: Investigate DeFi security incidents with multi-agent on-chain verification. Gathers intel, drafts schema-compliant JSON reports, verifies all claims against on-chain data, and runs adversarial validation before finalizing.
+description: Investigate DeFi security incidents with multi-agent on-chain verification. Gathers intel, enriches insufficient sources via web search, drafts schema-compliant JSON reports, verifies all claims against on-chain data, and runs adversarial validation before finalizing.
 ---
 
 # DeFi Incident Investigation
@@ -9,6 +9,7 @@ description: Investigate DeFi security incidents with multi-agent on-chain verif
 
 - User asks to investigate a DeFi hack and produce a detailed report JSON
 - User provides reference URLs (X posts, blog analyses, post-mortems) for an incident
+- User provides insufficient or mismatched sources — the skill autonomously searches the web to fill information gaps
 - Need to verify an existing JSON report against on-chain data
 
 ## Output
@@ -33,7 +34,7 @@ The table below maps the platform-agnostic roles to concrete tools in each suppo
 | general agent | `delegate_task` with `role="orchestrator"` | `Task` tool, then spawn more `Task` calls | Run in main agent | `Task` tool, then spawn more `Task` calls |
 | adversarial validator | `delegate_task` with `role="leaf"` in a separate session | `Task` tool with a "prove this wrong" prompt | Run in main agent with explicit "assume all claims are false" instruction | `Task` tool with a "prove this wrong" prompt |
 
-**When delegation is unavailable:** The main agent runs all phases sequentially itself. Phase 5 (Adversarial Validation) must still be performed — the agent re-reads the final JSON from disk and re-verifies all claims with a skeptical mindset, as if it were a different agent.
+**When delegation is unavailable:** The main agent runs all phases sequentially itself. Phase 6 (Adversarial Validation) must still be performed — the agent re-reads the final JSON from disk and re-verifies all claims with a skeptical mindset, as if it were a different agent.
 
 ## Checkpoint System
 
@@ -42,7 +43,7 @@ Every phase writes a checkpoint JSON to `/tmp/defi-incident-<incidentId>/`. This
 Checkpoint file format:
 ```json
 {
-  "phase": "intel|draft|verify|report|adversarial|finalize",
+  "phase": "intel|enrichment|draft|verify|report|adversarial|finalize",
   "status": "in_progress|completed|failed",
   "input": "<what was provided to this phase>",
   "result": "<what this phase produced>",
@@ -63,10 +64,40 @@ Before starting any phase, check if a checkpoint exists. If found and status="co
 2. If anti-crawler / Cloudflare blocks access: ask the user to manually visit the page and paste content. Do not attempt to bypass.
 3. If API keys are needed (Etherscan, etc.): follow the **API Key Resolution Protocol** (see section below). Do not guess or fabricate keys.
 4. Extract entities: protocol name, blockchain(s), attacker addresses, victim contracts, tx hashes, loss figures, attack timeline, attack method.
-5. Cross-reference with external databases. See `references/data-sources.md`.
+5. Cross-reference extracted entities with external databases. See `references/data-sources.md`.
 6. Write checkpoint: `phase=intel, status=completed, result=<extracted entities JSON>`.
 
-### Phase 2: Schema Draft (main agent)
+### Phase 2: Source Gap Analysis & Autonomous Enrichment (main agent)
+
+**Goal:** When user-provided sources are insufficient to reconstruct the full incident, autonomously search the web for additional information using extracted keywords.
+
+This phase operates in optimistic-trust mode: the skill is expected to run in a sandboxed environment, so the agent may freely use all available tools without additional permission prompts. See `references/data-sources.md` → Autonomous Web Search Strategy.
+
+1. **Assess intel completeness.** Review the Phase 1 entity extraction result. A source gap exists if any critical piece is missing or ambiguous:
+   - Attack timeline (start time, duration)
+   - Root cause (what vulnerability was exploited)
+   - Attack vector (how the exploit was executed)
+   - Loss breakdown (what was stolen, approximate USD value)
+   - Attacker address(es) and victim contract address(es)
+   - Transaction hash(es) of the exploit
+   - Post-mortem / remediation actions by the protocol
+2. **Detect target mismatch.** Compare the user's stated investigation target (from their original prompt) against the entities extracted from provided URLs. If they don't match (e.g., user asks about "October 2021 Cream Finance" but URLs are about "August 2021 Cream Finance"), flag this as a source gap — the provided URLs describe a different incident.
+3. **If no gap exists:** Skip to Phase 3. Write checkpoint: `phase=enrichment, status=completed, result="no gap detected, skipped"`.
+4. **If a gap exists:** Extract search keywords from:
+   - The user's original prompt (protocol name, date/timeframe, chain, incident type)
+   - The provided source URLs (any entities that can refine the search, ignoring mismatched elements)
+5. **Search for additional sources.** Use Browser and Search Engine tools to find:
+   - Audit reports
+   - Security incident alerts
+   - Attack clues and on-chain traces
+   - Attack analysis reports
+   - Post-mortem reports
+   - Official protocol statements and remediation actions
+6. **Process discovered URLs.** For each newly discovered URL, run the same content extraction as Phase 1. Merge new intel with existing Phase 1 intel.
+7. **Track provenance.** In the checkpoint, separate user-provided sources from autonomously discovered sources. Both are valid for the investigation — the distinction is for transparency and reproducibility.
+8. **Write checkpoint:** `phase=enrichment, status=completed, result=<merged intel JSON with source provenance>`.
+
+### Phase 3: Schema Draft (main agent)
 
 **Goal:** Produce a draft JSON report from intel.
 
@@ -77,7 +108,7 @@ Before starting any phase, check if a checkpoint exists. If found and status="co
 5. Write draft JSON to `/tmp/defi-incident-<incidentId>/draft.json`.
 6. Write checkpoint: `phase=draft, status=completed, result=<draft.json path>`.
 
-### Phase 3: On-Chain Verification (research agent)
+### Phase 4: On-Chain Verification (research agent)
 
 **Goal:** Verify every tx hash, address, amount, and timestamp against on-chain data.
 
@@ -95,20 +126,20 @@ Before starting any phase, check if a checkpoint exists. If found and status="co
 7. Record all discrepancies. Fix the draft JSON accordingly.
 8. Write checkpoint: `phase=verify, status=completed, result=<verified draft.json path, discrepancies list>`.
 
-### Phase 4: Report Generation (main agent)
+### Phase 5: Report Generation (main agent)
 
 **Goal:** Produce the final JSON report file.
 
-1. Read the verified draft from Phase 3 output.
+1. Read the verified draft from Phase 4 output.
 2. Write the final JSON to the user's requested output path (or `/tmp/defi-incident-<incidentId>/report.json` if no path specified).
 3. Validate against schema: run `python3 -c "import json; json.load(open('<path>'))"` to confirm valid JSON. Check all required fields present. Check all enum values valid.
 4. Write checkpoint: `phase=report, status=completed, result=<final report path>`.
 
-### Phase 5: Adversarial Validation (adversarial validator agent)
+### Phase 6: Adversarial Validation (adversarial validator agent)
 
 **Goal:** Independently re-verify the FINAL JSON against on-chain data, assuming all claims are false until proven.
 
-This is a SECOND verification pass, independent of Phase 3. The adversarial validator must:
+This is a SECOND verification pass, independent of Phase 4. The adversarial validator must:
 
 1. **Re-read the final JSON from disk** (not from memory).
 2. **For every `txHash`**: re-verify on-chain. If tx NOT FOUND → CRITICAL (fabricated hash). If `status == 0x0` → CRITICAL (failed tx included as success). If selector doesn't match description → CRITICAL.
@@ -124,11 +155,11 @@ Discrepancy severity:
 - **High**: timestamp off by >1 min, source figure adopted without cross-check, logical inconsistency → fix or annotate
 - **Medium**: minor rounding → fix if easy, otherwise annotate
 
-If verdict is FAIL: return to Phase 4, fix all Critical and High discrepancies, re-run Phase 5.
+If verdict is FAIL: return to Phase 5, fix all Critical and High discrepancies, re-run Phase 6.
 
 Write checkpoint: `phase=adversarial, status=completed, result=<verdict + discrepancy list>`.
 
-### Phase 6: Finalize (main agent)
+### Phase 7: Finalize (main agent)
 
 1. Present the final report path and adversarial validation verdict to the user.
 2. Wait for user confirmation ("apply it" / "flip it" / "looks good").
@@ -147,7 +178,7 @@ This protocol ensures consistent API key handling across all agent harnesses (He
 | BSCScan | Same as Etherscan | Same | BSC-specific queries |
 | Blockscout | None | N/A | Fallback for Etherscan — no key needed |
 | Public RPC | None | N/A | eth_getTransactionByHash, getCode, getBlockByNumber |
-| X/Twitter API | `XURL_*` in `~/.xurl` | `~/.xurl` (YAML) | xurl CLI (optional — vxtwitter is keyless) |
+| X/Twitter API | `XURL_*` in `~/.xurl` | `~/.xurl` | xurl CLI (optional — vxtwitter is keyless) |
 | CoinGecko | None | N/A | Historical ETH/token prices |
 
 ### Resolution Procedure (for each service the investigation needs)
@@ -191,9 +222,9 @@ Execute these steps IN ORDER. Stop at the first step that succeeds:
 |------|--------|
 | `templates/schema-guide.md` | Field constraints, extensible fields workflow, common compliance errors, validation snippet |
 | `references/onchain-verification.md` | Multi-chain RPC endpoints, Etherscan V2 API, EOA vs Contract detection, input decoding |
-| `references/pitfalls/general.md` | All known T2 verification traps (19 pitfalls from real investigations) |
-| `references/attack-patterns.md` | Attack pattern quick reference (key compromise, bridge, non-EVM, EIP-7702, MEV phishing, flash loan) |
-| `references/data-sources.md` | External databases (DeFiLlama, SlowMist, Etherscan, X/Twitter) + cross-source reconciliation table |
+| `references/pitfalls/general.md` | All known verification traps |
+| `references/attack-patterns.md` | Attack pattern quick reference |
+| `references/data-sources.md` | External databases, cross-source reconciliation, autonomous web search strategy |
 | `references/pitfalls/README.md` | Template for adding case-specific pitfalls after an investigation |
 
 ## Case-Specific Pitfalls

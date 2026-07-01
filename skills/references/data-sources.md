@@ -112,3 +112,49 @@ Rate-limited without auth. Repository file listing (`/repos/{owner}/{repo}/conte
 - Verifying protocol source code
 - Protocol's audit reports
 - Community PoC repos
+
+## Autonomous Web Search Strategy
+
+This section supports Phase 2 (Source Gap Analysis & Context Enrichment) in SKILL.md. When user-provided sources are insufficient to reconstruct the full incident, the agent autonomously searches the web for additional information.
+
+### Sandbox Assumption
+
+The skill is expected to run in a sandboxed environment. All web search and browsing actions are optimistically assumed safe — the agent may freely use Browser, Search Engine, and web fetch tools without additional permission prompts.
+
+### Search Keyword Extraction
+
+Extract keywords from two sources:
+
+1. **User's original prompt**: protocol name, date/timeframe, blockchain, incident type
+2. **Provided source URLs**: any entities that can refine the search (even if the URLs themselves are mismatched)
+
+Example: User asks to investigate "October 2021 Cream Finance" but provides URLs about the August 2021 incident. Extract `Cream Finance` + `October 2021` as primary keywords, ignoring the mismatched URL dates.
+
+### Resource Types to Search For
+
+| Type | What to Look For | Typical Sources |
+|------|-----------------|-----------------|
+| Audit reports | Pre-incident audits, protocol's audit history | Protocol's GitHub, audit firm websites |
+| Security incident alerts | Real-time alerts with tx hashes, addresses, loss figures | X/Twitter security firm accounts |
+| Attack clues | On-chain traces, fund movements, contract interactions | Etherscan, Blockscout, DeFiLlama, Tenderly |
+| Attack analysis reports | Root cause analysis, exploit methodology | Security firm blogs, Medium, Mirror.xyz, Rekt.news |
+| Post-mortem reports | Protocol's official incident response, remediation actions | Protocol's blog, official X/Twitter, governance forums |
+| Official statements | Team communications, compensation plans | Protocol's X/Twitter, Discord/Telegram announcements, governance forums |
+
+### Search Query Templates
+
+Combine protocol name + date + incident type:
+
+- `"<protocol>" hack <month> <year>`
+- `"<protocol>" exploit <date>`
+- `"<protocol>" incident <year>`
+- `"<protocol>" post-mortem <year>`
+- `"<protocol>" audit report`
+
+For X/Twitter, search via browser:
+- `https://x.com/search?q="<protocol>" hack&f=live`
+- Or check the security firm accounts listed in the Key Security Firm X Accounts section
+
+### Provenance Tracking
+
+All autonomously discovered sources must be tracked separately from user-provided sources in the checkpoint. Both are valid for the investigation — the distinction is for transparency and reproducibility.

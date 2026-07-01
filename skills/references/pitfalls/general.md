@@ -83,7 +83,7 @@ After ~50+ API calls across Phases 1-3, the Etherscan V2 API key can get blocked
 
 **Fix:** Follow the **API Key Resolution Protocol** Fallback Paths in SKILL.md. Switch to public RPC endpoints (`https://1rpc.io/eth` for Ethereum) or Blockscout API (`https://eth.blockscout.com/api/v2/`). All JSON-RPC methods (`eth_getTransactionByHash`, `eth_getTransactionReceipt`, `eth_getCode`, `eth_getBlockByNumber`) work without an API key. Blockscout provides tx lists and token transfers without a key.
 
-**Prevention:** Cache Etherscan API responses to disk during Phase 1. Reuse cached data in Phase 3 instead of re-querying. Reserve Etherscan API for queries that public RPC cannot handle (txlist, tokentx, contract creation). If no Etherscan key is available at all, Blockscout API can serve as the primary data source for ETH — it provides tx lists, token transfers, and contract source without authentication.
+**Prevention:** Cache Etherscan API responses to disk during Phase 1. Reuse cached data in Phase 4 instead of re-querying. Reserve Etherscan API for queries that public RPC cannot handle (txlist, tokentx, contract creation). If no Etherscan key is available at all, Blockscout API can serve as the primary data source for ETH — it provides tx lists, token transfers, and contract source without authentication.
 
 ## 17. EIP-7702 accountType Timing — Always Check at Attack Block
 

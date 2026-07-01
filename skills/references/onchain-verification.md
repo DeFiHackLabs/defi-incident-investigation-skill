@@ -1,6 +1,6 @@
 # On-Chain Verification Reference
 
-Multi-chain RPC patterns, Etherscan V2 API, and account type detection for Phase 3 verification.
+Multi-chain RPC patterns, Etherscan V2 API, and account type detection for Phase 4 verification.
 
 ## Etherscan V2 API
 
