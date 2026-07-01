@@ -15,8 +15,9 @@ LLM-generated incident reports share one fatal flaw: **hallucinated on-chain dat
 Fake transaction hashes, wrong loss figures, fabricated addresses — all wrapped in confident prose that looks credible.
 
 This skill solves that by verifying every claim against blockchain RPC nodes twice.
-    1. Once during investigation,
-    2. Another once by an independent adversarial agent that assumes the first one was lying.
+
+1. Once by the main investigator agent during report drafting;
+2. Another one by an independent adversarial agent that assumes the investigator agent was lying.
 
 ---
 
