@@ -4,12 +4,12 @@
   "title": "Taiko Bridge SGX Enclave Key Leak Exploit",
   "protocol": "Taiko",
   "blockchain": [
-    "ethereum"
+    "ethereum",
+    "rust"
   ],
   "category": [
     "key_compromise",
-    "bridge",
-    "forged_message"
+    "bridge"
   ],
   "ecosystem": "evm",
   "language": [
@@ -20,170 +20,91 @@
     "breakdown": [
       {
         "asset": "USDC",
-        "amount": "675,761.236461",
-        "convertedUSD": "675,761",
-        "note": "Two transfers: 649,761.236201 (block 25368853, retryMessage) + 26,000.000260 (block 25368910, processMessage). Both from ERC20Vault to attacker EOA."
+        "amount": "675761.236201",
+        "convertedUSD": "675761",
+        "note": "Released from ERC20Vault via retryMessage"
       },
       {
         "asset": "ETH",
         "amount": "130",
-        "convertedUSD": "312,000",
-        "note": "Internal transaction from Bridge proxy to attacker wallet 2 (0xa98035081fb739ebe9c8f80904668fb11438a846) at block 25368908 via processMessage. Price estimated at ~$2,400/ETH."
-      },
-      {
-        "asset": "TAIKO",
-        "amount": "1,990,000",
-        "convertedUSD": "189,050",
-        "note": "Block 25368955, processMessage, from ERC20Vault to attacker EOA. Token: 0x10Dea67478c5f8C5e2D90e5E9b26dBe60C54D800. Later sent to MEXC exchange via pass-through wallet 0x5FBc60A12bc6635e7d587d8dac52e4B1388b4990. Price estimated at ~$0.095/TAIKO (per PeckShield: 1.99M TAIKO = ~$189.12K)."
-      },
-      {
-        "asset": "crvUSD",
-        "amount": "156,832.011092154729",
-        "convertedUSD": "156,832",
-        "note": "From ERC20Vault to attacker EOA. Token: 0xf939E0A03FB07F7171FF782c3FeA19166BA9F0E0. Verified via Etherscan tokentx API."
+        "convertedUSD": "490100",
+        "note": "Released from Bridge via processMessage"
       },
       {
         "asset": "USDT",
-        "amount": "138,139.564343",
-        "convertedUSD": "138,140",
-        "note": "Block 25368854, retryMessage, from ERC20Vault to attacker EOA. Token: 0xdAC17F958D2ee523a2206206994597C13D831ec7."
+        "amount": "138139.564343",
+        "convertedUSD": "138140"
+      },
+      {
+        "asset": "crvUSD",
+        "amount": "156832.011092154729015188",
+        "convertedUSD": "156832"
       },
       {
         "asset": "WETH",
         "amount": "20.70482",
-        "convertedUSD": "49,691",
-        "note": "Block 25368854, retryMessage, from ERC20Vault to attacker EOA. Attacker later withdrew WETH to native ETH via WETH.withdraw(). Price estimated at ~$2,400/ETH."
-      },
-      {
-        "asset": "CRV",
-        "amount": "126,160.973069281665593531",
-        "convertedUSD": "44,156",
-        "note": "Block 25368855, retryMessage, from ERC20Vault to attacker EOA. Token: 0xD533a949740bb3306d119CC777fa900bA034cd52. Price estimated at ~$0.35/CRV."
-      },
-      {
-        "asset": "iZi",
-        "amount": "2,140,403.026072231869425941",
-        "convertedUSD": "32,106",
-        "note": "Block 25368856, retryMessage, from ERC20Vault to attacker EOA. Token: 0x9Ad37205D608b8b219e6A2573f922094cec5C200. Price estimated at ~$0.015/iZi."
+        "convertedUSD": "78000"
       },
       {
         "asset": "WBTC",
         "amount": "0.42634415",
-        "convertedUSD": "27,712",
-        "note": "Block 25368855, retryMessage, from ERC20Vault to attacker EOA. Token: 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599. Price estimated at ~$65,000/WBTC."
+        "convertedUSD": "45000"
       },
       {
         "asset": "weETH",
         "amount": "0.530999165959580756",
-        "convertedUSD": "1,381",
-        "note": "Block 25368856, retryMessage, from ERC20Vault to attacker EOA. Token: 0xcd5FE23c85820f7b72d0926fc9b05b43e359b7ee. Price estimated at ~$2,600/weETH."
+        "convertedUSD": "1500"
+      },
+      {
+        "asset": "CRV",
+        "amount": "126160.973069281665593531",
+        "convertedUSD": "50000"
+      },
+      {
+        "asset": "iZi",
+        "amount": "2140403.026072231869425941",
+        "convertedUSD": "5000"
+      },
+      {
+        "asset": "TAIKO",
+        "amount": "1990000",
+        "convertedUSD": "189120",
+        "note": "Transferred to MEXC exchange"
       }
     ],
-    "note": "Total estimated loss ~$1.7M based on approximate token prices at time of incident (June 21, 2026). On-chain verified total across 10 asset types. Source estimates: PeckShield ~$1.7M, QuillAudits ~$1.7M, DeFi Nerd >$1M. Discrepancy: DeFi Nerd listed USDC as single 675,761.236201; on-chain shows 2 transfers totaling 675,761.236461 (0.000260 USDC rounding difference)."
+    "note": "Total estimated ~$1.7M based on Defi Nerd's L1 reconstruction. ETH price assumed ~$3,770 at time of incident. The per-asset convertedUSD values are approximate and their sum (~$1.83M) exceeds the rounded $1.7M total. The $1.7M figure is the consensus estimate from PeckShield, Phalcon, QuillAudits, and GoPlus; individual token USD conversions at exact attack-time prices would refine the sum."
   },
   "attackTime": {
     "startTime": "2026-06-21T19:03:59Z",
     "endTime": "2026-06-21T22:28:11Z",
     "isRange": true,
-    "note": "Setup/proof batch at 2026-06-21T19:03:59Z (block 25367938). L1 asset releases from 2026-06-21T22:07:23Z (block 25368853) to 2026-06-21T22:28:11Z (block 25368955). Post-exploit fund movement continued to block 25369633. All timestamps verified from block.timestamp via eth_getBlockByNumber.",
-    "date": "2026-06-21"
+    "date": "2026-06-21",
+    "note": "Setup/proof batch tx at 19:03:59 UTC (block 25367938). L1 asset releases from 22:07:23 to 22:28:11 UTC (blocks 25368853-25368955). Taiko official security notice at 2026-06-22T00:49:14Z."
   },
   "transactions": [
     {
       "txHash": "0x2f44dc1b883522a88f9b0cbbdfabf9ec33884b69dd4326600c3fab7fb2277260",
       "blockchain": "ethereum",
       "role": "setup",
-      "description": "Phase 1 setup tx: Attacker EOA calls execute() (selector 0x09c5eabe) on executor contract 0xe0df6fc36deb38dd11dc53d327475c2b2b0ab98a. Registers 2 malicious SGX instances (IDs 5 and 6) via SgxVerifier.registerInstance() with instance keys 0x4777a54ff81357c966d7d98eea88f0f54d969135 and 0x292468e78605eca39071165b5eac4c9707ba9813. Saves forged Taiko checkpoint for block 1805600 (blockHash 0x69c9a97c034c4fd60be5dbd00cdad419acaf5ba30e6b8371437b7e919d1a49dd, stateRoot 0x5064e2a3dfde1cd6d164e07b5dae47433d20a2d2c1ba6c9bda60c1ab6765215f). Calls Bridge.processMessage() 10 times to set forged messages as RETRIABLE. Block 25367938, timestamp 2026-06-21T19:03:59Z. Status: SUCCESS. 24 logs emitted."
-    },
-    {
-      "txHash": "0x5bddc627e827bf450d781708f45d03c80cf483862f258689b3be651d8d27f7ab",
-      "blockchain": "ethereum",
-      "role": "setup",
-      "description": "Second setup tx (ATTEMPTED BUT REVERTED, status=0x0): Attacker calls execute() (selector 0x09c5eabe) on executor contract at block 25368887. This transaction failed (gasUsed=4,117,088, 0 logs emitted). Likely a second attempt at SGX instance registration or checkpoint manipulation that reverted. Included for completeness of the attack timeline."
+      "description": "Setup/proof batch: attacker EOA called executor via execute(bytes) [selector 0x09c5eabe]. Executor called SgxVerifier.registerInstance() [selector 0xa91951a2] twice, registering malicious SGX instances (IDs 5, 6). SignalService.saveCheckpoint() saved fake Taiko block 1805600 checkpoint. Bridge.processMessage() [selector 0x2035065e] called 10 times, setting 10 forged messages to RETRIABLE status."
     },
     {
       "txHash": "0x017292a7de5fef52a3274e37dda5ace4c4d0cdafe91b7b4ac9c700f02fae35ee",
       "blockchain": "ethereum",
       "role": "exploit",
-      "description": "Drain tx 1: retryMessage() (selector 0x0432873c) on Bridge proxy 0xd60247c6848b7ca29eddf63aa924e53db6ddd8ec. Releases 649,761.236201 USDC from ERC20Vault to attacker EOA. Block 25368853, timestamp 2026-06-21T22:07:23Z. Status: SUCCESS."
-    },
-    {
-      "txHash": "0x4986e4a4c8c541bc623bff9a6f1caa1795d92d0fcff8efef4d79d7ac4834ee61",
-      "blockchain": "ethereum",
-      "role": "exploit",
-      "description": "Drain tx 2: retryMessage() on Bridge proxy. Block 25368853. Forged message release."
-    },
-    {
-      "txHash": "0x2eff2a4d084a595352fc930c8ea75542f138237f5cfb4b469860f82360c07f1b",
-      "blockchain": "ethereum",
-      "role": "exploit",
-      "description": "Drain tx 3: retryMessage() releases 138,139.564343 USDT and 20.70482 WETH from ERC20Vault. Block 25368854."
-    },
-    {
-      "txHash": "0xa6664be5a4cba3a403c998e7b0126197bb719fc28af9aa86c8c98f730da5a974",
-      "blockchain": "ethereum",
-      "role": "exploit",
-      "description": "Drain tx 4: retryMessage() on Bridge proxy. Block 25368854. Forged message release."
-    },
-    {
-      "txHash": "0x50ba4f0feeea6a22e61e5379f5350a60a049379613d06d0d07018650bbf03efd",
-      "blockchain": "ethereum",
-      "role": "exploit",
-      "description": "Drain tx 5: retryMessage() releases 126,160.973069 CRV and 0.42634415 WBTC from ERC20Vault. Block 25368855."
-    },
-    {
-      "txHash": "0x2067b5d4bf676541b036f46f6d6cdcb8b51be96303dfd07f72597c50f1005e64",
-      "blockchain": "ethereum",
-      "role": "exploit",
-      "description": "Drain tx 6: retryMessage() on Bridge proxy. Block 25368855. Forged message release."
-    },
-    {
-      "txHash": "0x0bf2478d2038b2a765b68d0cc02a5f6e1295f17fde5cdeef9f6f5916eddfa811",
-      "blockchain": "ethereum",
-      "role": "exploit",
-      "description": "Drain tx 7: retryMessage() releases 2,140,403.026072 iZi and 0.530999 weETH from ERC20Vault. Block 25368856."
-    },
-    {
-      "txHash": "0x0f163c55606820dba7dc863bd4d979f32bc6464059f48240415d1831b18ce002",
-      "blockchain": "ethereum",
-      "role": "exploit",
-      "description": "Drain tx 8: retryMessage() on Bridge proxy. Block 25368856. Forged message release."
+      "description": "USDC release: retryMessage() [selector 0x0432873c] released USDC from ERC20Vault to attacker EOA 0x7506.... This was the first USDC release tx; total USDC stolen across all drain txs was 675,761.236201."
     },
     {
       "txHash": "0xb8befb015a67de8f40890b1f8667c597c3b66a52b388ec1c6cd28637fd65dd13",
       "blockchain": "ethereum",
       "role": "exploit",
-      "description": "Drain tx 9: processMessage() (selector 0x2035065e) on Bridge proxy. Internal transaction sends 130 ETH from Bridge to attacker wallet 2 (0xa98035081fb739ebe9c8f80904668fb11438a846). Block 25368908."
-    },
-    {
-      "txHash": "0x4a5c6d40b7523c84eb5f140802d063029781e6b3b215de9ac9bfc03986da67d8",
-      "blockchain": "ethereum",
-      "role": "exploit",
-      "description": "Drain tx 10: processMessage() releases 26,000.000260 USDC from ERC20Vault to attacker EOA. Block 25368910."
+      "description": "ETH release: processMessage() released 130 ETH from Bridge to attacker EOA 0x7506..."
     },
     {
       "txHash": "0x451423923ab3df56ce436a921d34d782681cf698b72ca61ad6b8a8b2aeee53b7",
       "blockchain": "ethereum",
       "role": "exploit",
-      "description": "Drain tx 11: processMessage() releases 1,990,000 TAIKO from ERC20Vault to attacker EOA. Block 25368955, timestamp 2026-06-21T22:28:11Z."
-    },
-    {
-      "txHash": "0x258f003b9770e1482f6db1f70e6883391d57f2db453763a66f96e93e758c82d3",
-      "blockchain": "ethereum",
-      "role": "consolidation",
-      "description": "Post-exploit: Attacker calls WETH.withdraw() (selector 0x2e1a7d4d) to convert 20.70482 WETH to native ETH. Block 25368937."
-    },
-    {
-      "txHash": "0x5d8127d07d0b94263c11be2a51f01b610f287580fb29ed3f4d35aa27359837d4",
-      "blockchain": "ethereum",
-      "role": "laundering",
-      "description": "Post-exploit: Attacker transfers 1,990,000 TAIKO (selector 0xa9059cbb) to pass-through wallet 0x5FBc60A12bc6635e7d587d8dac52e4B1388b4990, which subsequently sent it to MEXC exchange. Block 25368959."
-    },
-    {
-      "txHash": "0xa2b259f7daeb5485327f472afcdc638c6ca26d6a83537ad8e5f658b2bf8d3887",
-      "blockchain": "ethereum",
-      "role": "laundering",
-      "description": "Post-exploit: 100 ETH sent to attacker wallet 2 (0xa98035081fb739ebe9c8f80904668fb11438a846). Block 25369404. First of 5 transactions splitting 500 ETH total."
+      "description": "Major drain transaction (block 25368955, 22:28:11 UTC). processMessage() [selector 0x2035065e] called on Bridge, releasing additional assets to attacker. Verified on-chain: status=0x1 (SUCCESS)."
     }
   ],
   "attackers": [
@@ -192,64 +113,50 @@
       "blockchain": "ethereum",
       "role": "primary_attacker",
       "accountType": "EOA",
-      "description": "Primary attacker EOA. Confirmed via eth_getCode (code_len=2 at both latest and attack block 25367938). Submitted all setup and drain transactions. Tx count: 149 at time of investigation. Received all ERC-20 drains from ERC20Vault. Swapped tokens via Uniswap V3 router (0x9108828e30f2de407aadb0af677b4a9228e4acd4), withdrew WETH to ETH, and transferred 1.99M TAIKO to MEXC via pass-through wallet."
+      "description": "Main attacker EOA. Called executor contract, received stolen USDC/ETH/other assets. Transferred 1,990,000 TAIKO to MEXC exchange. Also held ~870 ETH (~$1.52M) at time of reports."
     },
     {
       "address": "0xa98035081fb739ebe9c8f80904668fb11438a846",
       "blockchain": "ethereum",
-      "role": "consolidation",
+      "role": "primary_attacker",
       "accountType": "EOA",
-      "description": "Secondary attacker wallet. Confirmed via eth_getCode (code_len=2 at both latest and attack block). Received 130 ETH via internal transaction from Bridge proxy at block 25368908. Later received 500 ETH in 5x100 ETH transactions (blocks 25369404-25369633) from primary attacker EOA. Tx count: 3 at time of investigation (all inbound ETH transfers)."
+      "description": "Second attacker wallet identified by QuillAudits. Received stolen funds alongside main EOA."
     },
     {
-      "address": "0x5FBc60A12bc6635e7d587d8dac52e4B1388b4990",
+      "address": "0xe0df6fc36deb38dd11dc53d327475c2b2b0ab98a",
       "blockchain": "ethereum",
-      "role": "consolidation",
-      "accountType": "EOA",
-      "description": "Pass-through wallet for TAIKO token laundering. Received 1,990,000 TAIKO from primary attacker EOA at block 25368959, then transferred same amount to MEXC exchange deposit address at block 25369002. Identified from PeckShield alert tweet image."
+      "role": "exploit_contract",
+      "accountType": "Contract",
+      "description": "Executor contract called by attacker EOA via execute(bytes). Orchestrated SGX instance registration, checkpoint saving, and processMessage calls in a single setup transaction."
     }
   ],
   "victims": [
     {
-      "address": "0xd60247c6848b7Ca29eDdF63AA924E53dB6Ddd8EC",
+      "address": "0xd60247c6848B7Ca29eDdF63AA924E53dB6Ddd8EC",
       "blockchain": "ethereum",
       "role": "protocol_contract",
       "accountType": "Contract",
-      "description": "Taiko Bridge Proxy contract. Confirmed via eth_getCode (code_len=342 at latest, code_len=4 at attack block indicating proxy). All 13 drain transactions (retryMessage and processMessage) targeted this contract. Released 130 ETH via internal transaction to attacker wallet 2."
+      "description": "Taiko Bridge Proxy on Ethereum L1. Implementation: 0x2705b12a971da766a3f9321a743d61cead67da2f. Released 130 ETH and other assets to attacker via forged processMessage/retryMessage calls."
     },
     {
       "address": "0x996282cA11E5DEb6B5D122CC3B9A1FcAAD4415Ab",
       "blockchain": "ethereum",
       "role": "protocol_contract",
       "accountType": "Contract",
-      "description": "Taiko ERC20Vault Proxy contract. Confirmed via eth_getCode (code_len=342 at both latest and attack block). All ERC-20 token drains (USDC, USDT, crvUSD, WETH, WBTC, weETH, CRV, iZi, TAIKO) originated from this contract. The vault was the custody sink, not the root cause of the bug."
-    },
-    {
-      "address": "0x9e0a24964e5397b566c1ed39258e21ab5e35c77c",
-      "blockchain": "ethereum",
-      "role": "protocol_contract",
-      "accountType": "Contract",
-      "description": "Taiko SignalService Proxy contract. Confirmed via eth_getCode (code_len=342 at latest, code_len=4 at attack block). The attacker's setup tx called saveCheckpoint() on this contract to inject a forged Taiko block checkpoint (block 1805600), which was then used to make fabricated source signal proofs pass verification."
-    },
-    {
-      "address": "0xe0df6fc36deb38dd11dc53d327475c2b2b0ab98a",
-      "blockchain": "ethereum",
-      "role": "vulnerable_contract",
-      "accountType": "Contract",
-      "description": "Executor contract called by attacker EOA via execute() (selector 0x09c5eabe). Confirmed via eth_getCode (code_len=4234 at latest, code_len=4 at attack block). This contract orchestrated the SGX instance registration, checkpoint saving, and message processing in a single batched transaction."
+      "description": "ERC20Vault Proxy on Ethereum L1. Implementation: 0xb20c8ffc2dd49596508d262b6e8b6817e9790e63. Released USDC, USDT, crvUSD, WETH, WBTC, weETH, CRV, iZi to attacker via forged retryMessage calls."
     }
   ],
-  "description": "On June 21, 2026, Taiko's L1 Bridge and ERC20Vault on Ethereum were exploited for approximately $1.7M through a forged SGX prover attestation attack. The root cause was an RSA-3072 private key (enclave-key.pem) used to sign all of Taiko's SGX enclaves, which had been committed to the public GitHub repository taikoxyz/raiko on a hotfix branch.\n\nThe attacker derived the MrSigner value (SHA-256 of the little-endian RSA modulus) from the leaked key and confirmed it matched the trustedUserMrSigner value stored on-chain in Taiko's L1 SgxVerifier contract. With this key, the attacker signed a malicious SGX enclave and registered it as a trusted prover instance via SgxVerifier.registerInstance(). The INSTANCE_VALIDITY_DELAY was set to 0, allowing the malicious instances (IDs 5 and 6) to be immediately usable.\n\nIn the setup transaction (block 25367938, 2026-06-21T19:03:59Z), the attacker EOA 0x7506DeA0c38ca0B55364B22424374c5A1ae1B76a called execute() on the executor contract 0xe0df6fc36deb38dd11dc53d327475c2b2b0ab98a. This batched call: (1) registered 2 malicious SGX instances, (2) called SignalService.saveCheckpoint() to save a forged Taiko block 1805600 checkpoint with fabricated blockHash and stateRoot, and (3) called Bridge.processMessage() 10 times, each delegating to SignalService.proveSignalReceived() for source chain 167000, setting forged bridge messages to RETRIABLE status.\n\nApproximately 3 hours later (blocks 25368853-25368955, 22:07:23Z to 22:28:11Z), the attacker executed 13 drain transactions: 8 retryMessage() calls and 5 processMessage() calls on the Bridge proxy. These released 10 different asset types from the ERC20Vault: 675,761 USDC, 138,140 USDT, 156,832 crvUSD, 130 ETH, 20.7 WETH, 0.43 WBTC, 0.53 weETH, 126,161 CRV, 2,140,403 iZi, and 1,990,000 TAIKO.\n\nPost-exploit, the attacker swapped ERC-20 tokens to ETH via Uniswap V3 router (0x9108828e30f2de407aadb0af677b4a9228e4acd4), withdrew WETH to native ETH, sent 1.99M TAIKO to MEXC exchange via pass-through wallet 0x5FBc60A12bc6635e7d587d8dac52e4B1388b4990, and split 500 ETH to a second wallet (0xa98035081fb739ebe9c8f80904668fb11438a846) in 5x100 ETH transactions.\n\nTaiko responded by pausing the L1 Bridge and ERC20Vault within hours. MEXC suspended TAIKO deposits. Taiko later replenished the bridge 1:1 from its own resources, confirmed no user lost funds, and brought the network back online on June 30, 2026. The bridge to Ethereum reopened with conservative withdrawal quotas.\n\nOn-chain verification (Phase 3): All 3 key transaction hashes verified via eth_getTransactionByHash (status=0x1 SUCCESS, selectors match expected functions, block timestamps match source claims). All 6 addresses verified via eth_getCode at both latest and attack block height (no EIP-7702 detected). Loss amounts verified by decoding Transfer events from 13 drain transaction receipts and cross-referencing with Etherscan tokentx API. 30 total attacker transactions in the attack window identified via Etherscan txlist API, including 15 drain/setup txs and 17 post-exploit consolidation/laundering txs.",
-  "rootCause": "The root cause was an operational key management failure: an RSA-3072 private key (enclave-key.pem) used to sign all of Taiko's SGX enclaves was committed to the public GitHub repository taikoxyz/raiko on a hotfix branch. This key was the entire trust root for Taiko's L2 state verification \u2014 MrSigner (SHA-256 of the little-endian RSA modulus) derived from this key was stored on-chain as trustedUserMrSigner in the SgxVerifier contract. Whoever holds this RSA private key can sign malicious enclaves that Taiko's L1 contracts will trust completely.\n\nTwo compounding contract-level design choices amplified the key leak: (1) processMessage() accepted any SGX attestation matching the registered MrSigner with no secondary signal (volume limits, second attestation source) to catch a state transition with no corresponding event on Taiko's actual L2; (2) retryMessage() trusted the RETRIABLE status set by a single prior forged attestation rather than re-verifying proof independently, converting one successful forgery into a repeatable drain primitive. Additionally, INSTANCE_VALIDITY_DELAY was set to 0, allowing freshly registered SGX instances to sign proofs immediately with no cooling-off period.",
-  "attackVector": "1. Key acquisition: Attacker pulled enclave-key.pem from the public taikoxyz/raiko GitHub repo (hotfix branch, committed by user smtmfft in PR #197 'feat(raiko): Cherry-pick A7 updates(#182)').\n2. MrSigner derivation: Attacker computed MrSigner = SHA-256(little-endian RSA modulus) from the leaked key and confirmed it matched trustedUserMrSigner on-chain.\n3. Malicious enclave signing: Attacker built a custom SGX enclave and signed it with the leaked RSA key, producing a valid MrSigner match.\n4. SGX instance registration: Attacker called execute() on the executor contract, which called SgxVerifier.registerInstance() twice (IDs 5 and 6). The crafted parameters passed DCAP verification (ECDSA signature verification + certificate chain validation). INSTANCE_VALIDITY_DELAY=0 meant instances were immediately usable.\n5. Checkpoint forgery: The same setup transaction called SignalService.saveCheckpoint() for Taiko block 1805600, injecting a fabricated blockHash (0x69c9a97c...) and stateRoot (0x5064e2a3...).\n6. Forged message proof: Bridge.processMessage() was called 10 times, each delegating to SignalService.proveSignalReceived() for source chain 167000. The forged checkpoint root made fabricated Taiko-origin message signals pass Ethereum L1 verification, setting message status to RETRIABLE.\n7. Asset drain: 8 retryMessage() and 5 processMessage() calls over ~20 minutes released 10 asset types from ERC20Vault and 130 ETH from Bridge. retryMessage() performed zero independent proof verification, trusting the RETRIABLE status set in step 6.\n8. Fund laundering: Attacker swapped ERC-20 tokens via Uniswap V3, withdrew WETH to ETH, sent 1.99M TAIKO to MEXC via pass-through wallet, and split ETH across two wallets.",
+  "description": "On June 21, 2026, Taiko's bridge infrastructure on Ethereum was exploited for approximately $1.7M. The attacker leveraged a leaked RSA-3072 private key (enclave-key.pem) that had been committed to the public taikoxyz/raiko GitHub repository on a hotfix branch. This key was used to sign all of Taiko's SGX enclaves and served as the entire trust root for the protocol's L2 state verification mechanism.\n\nThe attack unfolded in two phases. In the setup phase (block 25367938, 19:03:59 UTC), the attacker EOA 0x7506DeA0c38ca0B55364B22424374c5A1ae1B76a called an executor contract 0xe0df6fc36deb38dd11dc53d327475c2b2b0ab98a, which: (1) registered two malicious SGX instances via SgxVerifier.registerInstance() with instance keys 0x4777a54ff81357c966d7d98eea88f0f54d969135 and 0x292468e78605eca39071165b5eac4c9707ba9813 — these passed DCAP verification because the attacker's enclave was signed with the leaked key whose MrSigner matched the on-chain trustedUserMrSigner; (2) saved a fabricated Taiko L2 block checkpoint (block 1805600) via SignalService.saveCheckpoint(); (3) called Bridge.processMessage() 10 times, each delegating to SignalService.proveSignalReceived() for source chain 167000 (Taiko), which accepted the forged proofs and set 10 bridge messages to RETRIABLE status. INSTANCE_VALIDITY_DELAY was set to 0, so the freshly registered SGX instances were immediately usable.\n\nIn the drain phase (blocks 25368853-25368908, 22:07:23-22:18:23 UTC), the attacker used retryMessage() and processMessage() to release canonical L1 assets from the Bridge (0xd60247c6848B7Ca29eDdF63AA924E53dB6Ddd8EC) and ERC20Vault (0x996282cA11E5DEb6B5D122CC3B9A1FcAAD4415Ab) to attacker wallets. No corresponding MessageSent events existed on Taiko's actual L2 — the bridge messages were entirely fabricated.\n\nAssets stolen included 675,761 USDC, 138,139 USDT, 156,832 crvUSD, 130 ETH, 20.7 WETH, 0.43 WBTC, 0.53 weETH, 126,160 CRV, 2,140,403 iZi, and 1,990,000 TAIKO. The attacker transferred 1,990,000 TAIKO (~$189K) to MEXC exchange and also used Tornado Cash for fund laundering.\n\nTaiko responded by pausing the L1 Bridge and ERC20Vault, halting block production, and coordinating with MEXC to suspend TAIKO deposits. The team later replenished the bridge 1:1 from its own resources so no user lost funds. The chain was back online by June 30, 2026, with the bridge fully backed again.",
+  "rootCause": "The root cause was an operational key management failure: the RSA-3072 private key used to sign all Taiko SGX enclaves (enclave-key.pem) was committed to the public taikoxyz/raiko GitHub repository on a hotfix branch. This key functioned as the protocol's entire trust root for L2 state verification — its MrSigner value (SHA-256 of the little-endian RSA modulus) was stored on-chain as trustedUserMrSigner. Once the key was public, nothing distinguished a legitimate Raiko-built enclave from an attacker-built enclave signed with the same key. Two compounding contract-level design choices amplified the damage: (1) INSTANCE_VALIDITY_DELAY was set to 0, allowing freshly registered SGX instances to be used immediately with no time delay; (2) retryMessage() trusted the RETRIABLE status set by a single prior forged attestation rather than re-verifying the proof independently, turning one successful forgery into a repeatable drain primitive.",
+  "attackVector": "1. Key extraction: Attacker pulled enclave-key.pem from the public taikoxyz/raiko GitHub repo and derived its MrSigner, confirming it matched the on-chain trustedUserMrSigner.\n2. Malicious enclave signing: Attacker built a malicious SGX enclave and signed it with the leaked RSA key.\n3. Prover registration: Attacker EOA 0x7506... called executor 0xe0df... via execute(bytes) [selector 0x09c5eabe]. The executor called SgxVerifier.registerInstance() [selector 0xa91951a2] twice, registering malicious SGX instances (IDs 5 and 6) that passed DCAP verification because the enclave signature matched the trusted MrSigner. INSTANCE_VALIDITY_DELAY=0 meant they were immediately usable.\n4. Checkpoint forgery: SignalService.saveCheckpoint() [selector 0xc9a0b8c8] saved a fabricated Taiko block 1805600 checkpoint with forged block hash and state root.\n5. Forged message proof: Bridge.processMessage() [selector 0x2035065e] was called 10 times, each delegating to SignalService.proveSignalReceived() [selector 0x910af6ed] for source chain 167000 (Taiko). The forged checkpoint root made fabricated Taiko-origin message signals pass L1 verification, emitting MessageStatusChanged(msgHash, 1) = RETRIABLE for 10 fake bridge messages.\n6. Asset drain: In subsequent transactions, retryMessage() [selector 0x0432873c] and direct processMessage() calls released L1 assets from the Bridge and ERC20Vault to attacker wallets. No corresponding MessageSent events existed on Taiko's actual L2.",
   "lessons": [
-    "Never commit private keys, certificates, or .pem files to any Git branch \u2014 including hotfix branches that may bypass normal review. Implement automated pre-commit and pre-merge secret scanning in CI/CD.",
-    "A single RSA key controlling MrSigner for every enclave is a single point of total failure. Use multi-party enclave signing or implement key rotation and revocation paths that do not require a full contract upgrade.",
-    "retryMessage() must re-verify proofs independently rather than trusting a RETRIABLE status flag set earlier in the same trust chain. A status flag is not a proof.",
-    "INSTANCE_VALIDITY_DELAY should be non-zero to provide a cooling-off period during which newly registered SGX instances cannot sign proofs, giving protocol teams time to detect and respond to malicious registrations.",
-    "processMessage() should implement secondary verification signals (volume limits, rate limits, second attestation source) to detect state transitions with no corresponding event on the source chain.",
-    "The SGX trust model assumes the signing key remains private. Once leaked, nothing distinguishes a legitimate enclave from an attacker-built enclave signed with the same key. Protocols should consider transitioning to cryptographic validity proofs (ZK proofs) that trust no enclave, no MrSigner, and no operator discipline.",
-    "AI tools can grep every commit of every public repo at machine speed. Assume that any secret committed to a public repo will be found. Treat repository hygiene as a security-critical practice."
+    "Never commit private keys to any repository branch, including hotfix branches. Use pre-commit secret scanning hooks and CI/CD pipeline checks to flag .pem files and private keys before they reach any remote branch.",
+    "A single RSA key controlling MrSigner for all enclaves is a single point of total failure. Use multi-party enclave signing, key rotation, and revocation paths that do not require a full contract upgrade.",
+    "INSTANCE_VALIDITY_DELAY should not be zero. Newly registered SGX instances should have a mandatory time delay before being usable to allow for monitoring and circuit-breaker intervention.",
+    "retryMessage() should re-verify proofs independently rather than trusting a RETRIABLE status set by the same trust chain. This would have contained the attack to a single drain instead of a repeatable primitive.",
+    "Bridge release paths should have circuit breakers that detect and halt registerInstance -> saveCheckpoint -> processMessage/retryMessage sequences within the same transaction.",
+    "Consider migrating from TEE-based verification to cryptographic validity proofs (ZK proofs) that trust no enclave, no MrSigner, and no operator discipline. The attack becomes cryptographically impossible rather than operationally unlikely.",
+    "Monitor public Git repositories for accidentally committed secrets. AI-powered secret scanning can grep every commit of every public repo at machine speed — assume this is already happening to your protocol."
   ],
   "references": [
     "https://x.com/taikoxyz/status/2068858818352865626",
@@ -265,8 +172,7 @@
     "https://x.com/GoPlusZH/status/2069013778788999239",
     "https://x.com/BlockTempo/status/2068909505849766119",
     "https://x.com/MEXC_CST/status/2068896592053284972",
-    "https://x.com/Arisk_io/status/2068869101725049115",
-    "https://www.halborn.com/blog/post/explained-the-taiko-bridge-hack-june-2026"
+    "https://x.com/Arisk_io/status/2068869101725049115"
   ],
   "metadata": {
     "human_verified": false,
