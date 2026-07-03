@@ -36,6 +36,63 @@ The table below maps the platform-agnostic roles to concrete tools in each suppo
 
 **When delegation is unavailable:** The main agent runs all phases sequentially itself. Phase 6 (Adversarial Validation) must still be performed — the agent re-reads the final JSON from disk and re-verifies all claims with a skeptical mindset, as if it were a different agent.
 
+## Parallel Dispatch Strategy
+
+Several workflow phases contain independent work items that can run concurrently, dramatically reducing investigation time. See `references/parallel-dispatch.md` for the full cross-harness reference.
+
+### Core Principle
+
+When you have N independent work items (URLs, tx hashes, addresses, search queries) with no ordering dependency between them, dispatch up to N parallel subagents — one per item — bounded by the harness concurrency limit.
+
+### When to Parallelize
+
+| Phase | Granularity | Example |
+|-------|-------------|---------|
+| Phase 1: Intel Gathering | 1 subagent per reference URL | 15 URLs → up to 15 subagents |
+| Phase 2: Autonomous Enrichment | 1 subagent per search query or discovered URL | 5 queries + 3 new URLs |
+| Phase 4: On-Chain Verification | 1 subagent per tx hash, per address, or per group | 4 txs + 5 addresses → up to 9 subagents |
+
+### When NOT to Parallelize
+
+- Phase 3 (Schema Draft) — requires holistic view of all intel
+- Phase 5 (Report Generation) — sequential file write
+- Phase 6 (Adversarial Validation) — requires full-report context
+- Phase 7 (Finalize) — human interaction
+- Any step with ordering dependencies or shared mutable state
+
+### Concurrency Management
+
+When work items exceed the harness concurrency limit, batch them:
+
+1. Group items into batches of size = concurrency limit
+2. Dispatch a batch, wait for all subagents to complete
+3. Aggregate results, then dispatch the next batch
+4. After all batches complete, perform final aggregation
+
+### Harness Parallel Dispatch Mapping
+
+| Capability | Hermes | Claude Code | OpenCode | Codex |
+|------------|--------|-------------|----------|-------|
+| Parallel batch | `delegate_task(tasks=[{goal, context}, ...])` | Multiple `Task()` in one response | Sequential fallback | Multiple `Task()` in one response |
+| Max concurrency | `max_concurrent_children` (default 3) | No hard limit (practical: 3-5) | N/A | No hard limit (practical: 3-5) |
+
+### Subagent Return Format
+
+Each parallel subagent MUST return a structured JSON result so the main agent can aggregate efficiently. See `references/parallel-dispatch.md` → Structured Return Format for the exact schema per phase.
+
+### Result Aggregation
+
+The main agent collects all subagent returns and performs:
+
+1. **Entity deduplication** — merge identical addresses/tx hashes from multiple subagents
+2. **Conflict resolution** — apply Cross-Source Reconciliation rules (`references/data-sources.md`); on-chain data is ground truth
+3. **Completeness check** — verify no critical entity is missing
+4. **Provenance tracking** — record which source URL contributed each entity
+
+### RPC Rate-Limit Protection (Phase 4)
+
+When multiple verification subagents run in parallel, assign each a different primary RPC endpoint to avoid triggering 429 rate limits. See `references/parallel-dispatch.md` → RPC Endpoint Distribution.
+
 ## Checkpoint System
 
 Every phase writes a checkpoint JSON to `/tmp/defi-incident-<incidentId>/`. This enables resume after timeout, token limit, or interruption.
@@ -56,24 +113,31 @@ Before starting any phase, check if a checkpoint exists. If found and status="co
 
 ## Workflow
 
-### Phase 1: Intel Gathering (general agent)
+### Phase 1: Intel Gathering (general agent + parallel research agents)
 
-**Goal:** Extract all available information from user-provided reference URLs.
+**Goal:** Extract all available information from user-provided reference URLs, in parallel.
 
-1. Read all provided URLs. For X/Twitter URLs, use the vxtwitter API (`https://api.vxtwitter.com/Twitter/status/<TWEET_ID>`) — it requires no auth and returns full tweet text, media URLs, threaded tweets, and quoted tweets. Use `vision_analyze` on `mediaURLs` to extract on-chain data from tweet images. For other URLs, use `browser_navigate` + `browser_console` for JavaScript-rendered pages. Extract full article content including code blocks, addresses, tx hashes. **Note:** vxtwitter truncates tweets at ~1000 chars; for long technical threads from security firms, always use `browser_navigate` + `browser_console(expression="document.body.innerText")` as a fallback to get the complete text. If a URL returns 404 (page not found), exclude it from references and continue — do not block the investigation on a single dead URL if other sources cover the same information.
-2. If anti-crawler / Cloudflare blocks access: ask the user to manually visit the page and paste content. Do not attempt to bypass.
+1. **Dispatch parallel research subagents — one per reference URL.** For N user-provided URLs, dispatch up to N subagents (bounded by the harness concurrency limit — see Parallel Dispatch Strategy above and `references/parallel-dispatch.md`). Each subagent processes ONE URL and returns a structured JSON result (see `references/parallel-dispatch.md` → Structured Return Format → Intel Gathering).
+   - Each subagent's goal must include the URL-specific extraction rules:
+     - For X/Twitter URLs: use vxtwitter API (`https://api.vxtwitter.com/Twitter/status/<TWEET_ID>`) — no auth, returns full tweet text, media URLs, threaded tweets, quoted tweets. Use `vision_analyze` on `mediaURLs` to extract on-chain data from tweet images. **Note:** vxtwitter truncates at ~1000 chars; for long technical threads from security firms, fall back to `browser_navigate` + `browser_console(expression="document.body.innerText")`.
+     - For other URLs: use `browser_navigate` + `browser_console` for JavaScript-rendered pages. Extract full article content including code blocks, addresses, tx hashes.
+     - If a URL returns 404, report `access_issues: "404"` — do not block.
+   - If anti-crawler / Cloudflare blocks access: report `access_issues: "blocked"`. The main agent will ask the user to manually paste content.
+2. **Aggregate results.** The main agent collects all subagent returns and performs:
+   - Entity deduplication (merge identical addresses/tx hashes from multiple sources)
+   - Conflict resolution (apply Cross-Source Reconciliation from `references/data-sources.md`)
+   - Provenance tracking (record which URL contributed each entity)
 3. If API keys are needed (Etherscan, etc.): follow the **API Key Resolution Protocol** (see section below). Do not guess or fabricate keys.
-4. Extract entities: protocol name, blockchain(s), attacker addresses, victim contracts, tx hashes, loss figures, attack timeline, attack method.
-5. Cross-reference extracted entities with external databases. See `references/data-sources.md`.
-6. Write checkpoint: `phase=intel, status=completed, result=<extracted entities JSON>`.
+4. Cross-reference aggregated entities with external databases. See `references/data-sources.md`.
+5. Write checkpoint: `phase=intel, status=completed, result=<aggregated entities JSON with provenance>`.
 
-### Phase 2: Source Gap Analysis & Autonomous Enrichment (main agent)
+### Phase 2: Source Gap Analysis & Autonomous Enrichment (main agent + parallel research agents)
 
 **Goal:** When user-provided sources are insufficient to reconstruct the full incident, autonomously search the web for additional information using extracted keywords.
 
 This phase operates in optimistic-trust mode: the skill is expected to run in a sandboxed environment, so the agent may freely use all available tools without additional permission prompts. See `references/data-sources.md` → Autonomous Web Search Strategy.
 
-1. **Assess intel completeness.** Review the Phase 1 entity extraction result. A source gap exists if any critical piece is missing or ambiguous:
+1. **Assess intel completeness.** Review the Phase 1 aggregated entity extraction result. A source gap exists if any critical piece is missing or ambiguous:
    - Attack timeline (start time, duration)
    - Root cause (what vulnerability was exploited)
    - Attack vector (how the exploit was executed)
@@ -86,15 +150,14 @@ This phase operates in optimistic-trust mode: the skill is expected to run in a 
 4. **If a gap exists:** Extract search keywords from:
    - The user's original prompt (protocol name, date/timeframe, chain, incident type)
    - The provided source URLs (any entities that can refine the search, ignoring mismatched elements)
-5. **Search for additional sources.** Use Browser and Search Engine tools to find:
-   - Audit reports
-   - Security incident alerts
-   - Attack clues and on-chain traces
-   - Attack analysis reports
-   - Post-mortem reports
-   - Official protocol statements and remediation actions
-6. **Process discovered URLs.** For each newly discovered URL, run the same content extraction as Phase 1. Merge new intel with existing Phase 1 intel.
-7. **Track provenance.** In the checkpoint, separate user-provided sources from autonomously discovered sources. Both are valid for the investigation — the distinction is for transparency and reproducibility.
+5. **Dispatch parallel search subagents — one per search query.** Construct search queries from the keyword templates in `references/data-sources.md` → Search Query Templates. Dispatch one subagent per query (bounded by the harness concurrency limit). Each subagent:
+   - Executes its assigned search query via Browser and Search Engine tools
+   - Identifies relevant URLs from the results (audit reports, security alerts, attack analysis, post-mortems)
+   - Returns a structured JSON result (see `references/parallel-dispatch.md` → Structured Return Format → Autonomous Enrichment)
+6. **Dispatch parallel extraction subagents for discovered URLs.** For each new URL discovered by the search subagents, dispatch a content-extraction subagent. This is a second wave of parallel dispatch.
+7. **Aggregate results.** The main agent merges all discovered intel with existing Phase 1 intel:
+   - Entity deduplication and conflict resolution
+   - Track provenance: separate user-provided sources from autonomously discovered sources
 8. **Write checkpoint:** `phase=enrichment, status=completed, result=<merged intel JSON with source provenance>`.
 
 ### Phase 3: Schema Draft (main agent)
@@ -108,23 +171,34 @@ This phase operates in optimistic-trust mode: the skill is expected to run in a 
 5. Write draft JSON to `/tmp/defi-incident-<incidentId>/draft.json`.
 6. Write checkpoint: `phase=draft, status=completed, result=<draft.json path>`.
 
-### Phase 4: On-Chain Verification (research agent)
+### Phase 4: On-Chain Verification (parallel research agents)
 
-**Goal:** Verify every tx hash, address, amount, and timestamp against on-chain data.
+**Goal:** Verify every tx hash, address, amount, and timestamp against on-chain data, in parallel.
 
 1. Read `references/onchain-verification.md` for multi-chain RPC patterns and Etherscan V2 API usage.
 2. Read `references/pitfalls/general.md` for known verification traps.
 3. **Important:** Cache all API responses to disk during Phase 1. Reuse cached data here instead of re-querying. If the API key gets rate-limited (see Pitfall #16), switch to public RPC (e.g., `https://1rpc.io/eth` for Ethereum). Add `time.sleep(1)` between RPC calls to avoid 429 (see Pitfall #19). If an RPC call returns `None`/`null` as the result (not `"0x"`, not an error), treat it as a transient failure and retry from a different endpoint — do NOT classify based on a `None` result (see Pitfall #20).
-4. For every `txHash` in the draft:
-   - Call `eth_getTransactionByHash` (or equivalent for the chain) — verify tx exists, `from`/`to` match, `status == 0x1` (SUCCESS)
-   - Call `eth_getBlockByNumber` — verify block timestamp matches `attackTime`
-   - Decode `input` selector — verify it matches the claimed function
-   - For mint/transfer: decode amount and verify against report
-5. For every `address` in `attackers[]` and `victims[]`:
-   - Call `eth_getCode` at BOTH `latest` AND `hex(attackBlock)` — verify `accountType` (EOA vs Contract vs EIP-7702). The accountType should reflect the state at the attack block, not at `latest` (see Pitfall #17).
-6. For `estimatedLoss`: sum on-chain amounts by decoding Transfer events from the drain tx receipt, verify total matches report
-7. Record all discrepancies. Fix the draft JSON accordingly.
-8. Write checkpoint: `phase=verify, status=completed, result=<verified draft.json path, discrepancies list>`.
+4. **Dispatch parallel verification subagents.** Split the draft's verification items into two groups and dispatch them concurrently:
+
+   **Group A — one subagent per tx hash:**
+   - Each subagent calls `eth_getTransactionByHash` — verify tx exists, `from`/`to` match, `status == 0x1` (SUCCESS)
+   - Calls `eth_getBlockByNumber` — verify block timestamp matches `attackTime`
+   - Decodes `input` selector — verify it matches the claimed function
+   - For mint/transfer: decodes amount and verifies against report
+   - Returns structured JSON (see `references/parallel-dispatch.md` → Structured Return Format → On-Chain Verification → Per tx hash)
+
+   **Group B — one subagent per address (attackers[] and victims[]):**
+   - Each subagent calls `eth_getCode` at BOTH `latest` AND `hex(attackBlock)` — verifies `accountType`. The accountType should reflect the state at the attack block, not at `latest` (see Pitfall #17).
+   - Returns structured JSON (see `references/parallel-dispatch.md` → Structured Return Format → On-Chain Verification → Per address)
+
+   **RPC endpoint distribution:** Assign each subagent a different primary RPC endpoint to avoid parallel 429 rate limits (see `references/parallel-dispatch.md` → RPC Endpoint Distribution). Each subagent falls back to other endpoints if its assigned one fails.
+
+   Both groups can be dispatched simultaneously (tx verification and address verification are independent).
+5. **Aggregate results.** The main agent collects all subagent returns:
+   - For `estimatedLoss`: sum on-chain amounts by decoding Transfer events from the drain tx receipt, verify total matches report
+   - Compile all discrepancies from all subagents
+   - Fix the draft JSON accordingly
+6. Write checkpoint: `phase=verify, status=completed, result=<verified draft.json path, discrepancies list>`.
 
 ### Phase 5: Report Generation (main agent)
 
@@ -221,6 +295,7 @@ Execute these steps IN ORDER. Stop at the first step that succeeds:
 | File | Covers |
 |------|--------|
 | `templates/schema-guide.md` | Field constraints, extensible fields workflow, common compliance errors, validation snippet |
+| `references/parallel-dispatch.md` | Cross-harness parallel subagent dispatch: concurrency limits, batching, structured return formats, RPC endpoint distribution, dispatch prompt templates |
 | `references/onchain-verification.md` | Multi-chain RPC endpoints, Etherscan V2 API, EOA vs Contract detection, input decoding |
 | `references/pitfalls/general.md` | All known verification traps |
 | `references/attack-patterns.md` | Attack pattern quick reference |
