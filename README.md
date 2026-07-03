@@ -25,8 +25,8 @@ This skill solves that by verifying every claim against blockchain RPC nodes twi
 
 ```mermaid
 flowchart LR
-    A["<font size=5><b>Intel gathering</b></font><br/>Extract key-info from given sources"]
-    G["<font size=5><b>Context enrichment</b></font><br/>Autonomous web search when sources insufficient"]
+    A["<font size=5><b>Intel gathering</b></font><br/>Parallel extraction from N reference URLs"]
+    G["<font size=5><b>Context enrichment</b></font><br/>Parallel autonomous web search when sources insufficient"]
     B["<font size=5><b>Schema draft</b></font><br/>Map intel into structured JSON schema"]
     C["<font size=5><b>On-chain verify</b></font><br/>Verify every hash, address, and amount in parallel"]
     D["<font size=5><b>Report generation</b></font><br/>Write results to JSON and validate format"]
@@ -47,7 +47,7 @@ flowchart LR
 
 - **Structuralize output** — A well-constructed incident report should not be free-text prose. Reports are strict JSON conforming to a formal schema with required fields, extensible vocabularies, and enum validation. Every tx hash, address, and amount is on-chain verified before the report is finalized.
 
-- **Parallel agent delegation** — Intel gathering, On-chain verification, and adversarial validation run as independent subagents with isolated context, preventing bias bleed-through from the main conversation. Works across Hermes, Claude Code, OpenCode, and Codex; falls back to sequential execution when delegation is unavailable.
+- **Parallel agent delegation** — Intel gathering, context enrichment, and on-chain verification run as independent subagents with isolated context, preventing bias bleed-through from the main conversation.
 
 - **Autonomous source enrichment** — When user-provided sources are insufficient or mismatched, the agent autonomously searches the web (Browser, Search Engine) using keywords extracted from the user's prompt and provided URLs. It hunts for audit reports, security alerts, attack analysis, and post-mortem reports.
 
